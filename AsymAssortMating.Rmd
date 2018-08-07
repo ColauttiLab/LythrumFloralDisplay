@@ -1,0 +1,84 @@
+---
+title: "Asymmetric assortative mating reduces migration load during a biological invasion"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(viridis)
+```
+
+# Abstract
+
+Gene flow among locally-adapted populations reduces the efficiency of divergent natural selection by increasing the frequency of locally-maladapted alleles. The resulting migration load – i.e. a reduction in population mean fitness due to introgression of migrant alleles – is a key parameter in evolutionary models of species’ range limits and speciation, and a prominent consideration in the management of native species and natural resources. However, rapidly spreading invasive species often form latitudinal clines in growth and phenology, suggesting that adaptive evolution can occur rapidly despite the frequent movement of maladapted alleles. Using simulations and a common garden experiment of the invasive plant _Lythrum salicaria_ we investigated the interaction between fecundity selection and assortative mating along an environmental gradient. Both theoretical and empirical results demonstrate how evolution of a locally adaptive, genetic cline in reproductive phenology creates fitness asymmetries and phenological asynchrony. These interact synergistically to increase mating opportunities among locally adaptive genotypes while reducing mating between locally maladapted genotypes, reinforcing population divergence. A positive feedback loop is created as divergent selection on phenology causes asynchronous mating opportunities that further increases the rate and extent of adaptive evolution. This phenomenon and may be common during biological invasion, stock enhancement, assisted migration, and other scenarios of local adaptation under high gene flow.
+
+# Model
+
+TO DO:
+  
+  1. Simple fitness model where absolute fitness and mean fitness covary with distance from population of origin.
+  
+  # Data import & setup
+
+```{r}
+Disp<-read.csv("LythrumDisplay2008.csv")
+Disp$Block<-as.factor(gsub("[a-f]","",Disp$Row))
+Disp$RelFit<-Disp$HinfW/mean(Disp$HinfW,na.rm=T)
+head(Disp)
+```
+
+## Data description
+
+  * **Num** -- unique number from 1 to `r max(Disp$Num)`
+  * **Row** -- combination of block (1-4) and row within block (a-f)
+  * **Pop** -- Population code (see [Montague et al. 2008](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1420-9101.2007.01456.x))
+  * **Lat** -- Latitude of seed family origin
+  * **Start** -- Julian Day of first flower (standardized to 0 for first observed flower)
+  * **End** -- Julian Day of final flower
+  * **Veg** -- Vegetative height at first flower
+  * **PC1** -- PC1 of Vegetative height and date of first flower
+  * **HinfW** -- Inflorescence Biomass at harvest
+  * **TotFlwr** -- Total # of flowers produced
+  * **d0 to d60** -- Number of viable flowers for each 5-day period, beginning with first day of flower observed
+  * **Block** -- Experimental block (1-4)
+  * **RelFit** -- Relative fitness (calculated from inflorescence biomass)
+
+## Reorganize data
+
+```{r}
+Days<-names(Disp)[grep("d[0-9]",names(Disp))] # Vector of names
+Flwr<-Disp %>% gather(Days,key="RelDay",value="OpFlwr") # Reorganize
+Flwr$RelDay<-as.numeric(gsub("d","",Flwr$RelDay)) # Remove 'd' from day
+Flwr$AbsDay<-Flwr$RelDay+Flwr$Start # Add absolute day
+Flwr$CumFlwr<-ave(Flwr$OpFlwr,Flwr$Num,FUN=cumsum) # Calculate cumulative N flowers
+```
+
+
+# Inspect flowering profiles
+
+## Open flowers from each population
+
+```{r}
+ggplot(aes(x=AbsDay,y=OpFlwr,group=Pop,colour=Lat),data=Flwr[Flwr$OpFlwr>0,])+
+  geom_point(alpha=I(0.3))+geom_smooth(se=F,alpha=I(0.3))+
+  theme_bw()+
+  scale_color_gradientn(colours=c("#FE5F55","#9D8DF1","#71A9F7","#BEE9E8"))
+```
+
+## Cumulative flowering for each plant
+
+```{r}
+ggplot(aes(x=AbsDay,y=CumFlwr,group=Num,colour=Lat),data=Flwr)+
+  geom_point(alpha=I(0.3))+geom_line(se=F,alpha=I(0.3))+
+  theme_bw()+
+  scale_color_gradientn(colours=c("#FE5F55","#9D8DF1","#71A9F7","#BEE9E8"))
+```
+
+
+
+
+## TO DO:
+
+  1. Get final inflorescence length from harvest data to measure how compact inflorescences are.

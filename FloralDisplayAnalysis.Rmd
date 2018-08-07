@@ -1,0 +1,146 @@
+---
+title: "Floral Display Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(viridis)
+library(lme4)
+```
+
+# Data import & setup
+
+```{r}
+Disp<-read.csv("LythrumDisplay2008.csv")
+Disp$Block<-as.factor(gsub("[a-f]","",Disp$Row))
+Disp$RelFit<-Disp$HinfW/mean(Disp$HinfW,na.rm=T)
+head(Disp)
+```
+
+## Data description
+
+  * **Num** -- unique number from 1 to `r max(Disp$Num)`
+  * **Row** -- combination of block (1-4) and row within block (a-f)
+  * **Pop** -- Population code (see [Montague et al. 2008](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1420-9101.2007.01456.x))
+  * **Lat** -- Latitude of seed family origin
+  * **Start** -- Julian Day of first flower (standardized to 0 for first observed flower)
+  * **End** -- Julian Day of final flower
+  * **Veg** -- Vegetative height at first flower
+  * **PC1** -- PC1 of Vegetative height and date of first flower
+  * **HinfW** -- Inflorescence Biomass at harvest
+  * **TotFlwr** -- Total # of flowers produced
+  * **d0 to d60** -- Number of viable flowers on for each 5-day period, beginning with first day of flower observed
+  * **Block** -- Experimental block (1-4)
+  * **RelFit** -- Relative fitness (calculated from inflorescence biomass)
+
+## Rearrage and organize
+
+```{r}
+Days<-names(Disp)[grep("d[0-9]",names(Disp))] # Vector of names
+Flwr<-Disp %>% gather(Days,key="RelDay",value="OpFlwr") # Rearrange
+Flwr$RelDay<-as.numeric(gsub("d","",Flwr$RelDay)) # Remove 'd' from day
+```
+
+## Add floral display metrics
+
+```{r}
+Flwr$AbsDay<-Flwr$RelDay+Flwr$Start # Add absolute day
+Flwr$CumFlwr<-ave(Flwr$OpFlwr,Flwr$Num,FUN=cumsum) # Calculate cumulative N flowers
+```
+
+### Standardize metrics
+
+Standardize floral display as a proportion of total flowers to control for variation in plant size (we already know there are latitudinal clines in size).
+
+```{r}
+FlwrStd<-function(x){x/max(x,na.rm=T)}
+FlwrStd2<-function(x){x/sum(x,na.rm=T)}
+Flwr$StdCumFlwr<-ave(Flwr$CumFlwr,Flwr$Num,FUN=FlwrStd)
+Flwr$StdOpFlwr<-ave(Flwr$OpFlwr,Flwr$Num,FUN=FlwrStd2)
+```
+
+# Inspect flowering profiles
+
+## Open flowers from each population
+
+```{r}
+ggplot(aes(x=RelDay,y=StdOpFlwr,group=Pop,colour=Lat),data=Flwr[Flwr$StdOpFlwr>0 & Flwr$StdCumFlwr<1,])+
+  geom_point(alpha=I(0.3))+stat_smooth(method="lm",se=F,alpha=I(0.3),formula=y~x+I(x^2))+
+  theme_bw()+
+  scale_color_gradientn(colours=c("#FE5F55","#9D8DF1","#71A9F7","#BEE9E8"))+
+  labs(x="Day (relative)",y="Relative # flowers")
+```
+
+## Cumulative flowering for each plant
+
+```{r}
+ggplot(aes(x=RelDay,y=StdCumFlwr,group=Num,colour=Lat),data=Flwr)+
+  geom_point(alpha=I(0.3))+geom_line(alpha=I(0.3))+
+  theme_bw()+
+  scale_color_gradientn(colours=c("#FE5F55","#9D8DF1","#71A9F7","#BEE9E8"))
+```
+
+# Is log-log relationship approximately linear?
+```{r}
+ggplot(aes(x=log(RelDay),y=log(StdCumFlwr),group=Num,colour=Lat),data=Flwr[Flwr$StdOpFlwr>0 & Flwr$StdOpFlwr<1,])+
+  geom_point(alpha=I(0.3))+stat_smooth(geom="line",method="lm",se=F,alpha=0.3)+
+  theme_bw()+
+  scale_color_gradientn(colours=c("#FE5F55","#9D8DF1","#71A9F7","#BEE9E8"))
+```
+
+Looks like a reasonable approximation; allows mixed models
+
+### Mixed Model Analysis
+```{r}
+# Set factor for individual IDs
+Flwr$ID<-as.factor(Flwr$Num)
+Flwr$Pop<-as.factor(Flwr$Lat)
+```
+
+#### Flowering Curvature
+
+```{r}
+FC<-function(x,y){
+  Coef<-lm(y~x)$coefficients
+  return(cbind(Coef[[1]],Coef[[2]]))
+}
+CurvDat<-data.frame(ID=unique(Flwr$ID),Pop=NA,a=NA,b=NA,m=NA)
+for(i in unique(Flwr$ID)){
+  subDat<-Flwr[Flwr$StdOpFlwr>0 & Flwr$StdOpFlwr<1,]
+  subDat<-subDat[subDat$ID==i,]
+  if(nrow(subDat)>5){
+    Cf<-lm(StdOpFlwr~RelDay+I(RelDay^2),data=subDat)$coefficients
+    CurvDat[CurvDat$ID==i,"Pop"]<-unique(subDat$Pop)
+    CurvDat[CurvDat$ID==i,"m"]<-Cf[[1]]
+    CurvDat[CurvDat$ID==i,"a"]<-Cf[[2]]
+    CurvDat[CurvDat$ID==i,"b"]<-Cf[[3]]
+    subDat<-Cf<-NA
+  }
+}
+
+#FC1<-lmer(StdCumFlwr~RelDay+I(RelDay^2),
+#          data=Flwr[Flwr$StdOpFlwr>0 & Flwr$StdOpFlwr<1,])
+```
+
+#### Flowering Rate
+
+```{r}
+FR1<-lmer(log(StdCumFlwr)~log(StdOpFlwr)*Pop+(log(StdOpFlwr)|ID),
+       data=Flwr[Flwr$StdOpFlwr>0 & Flwr$StdOpFlwr<1,])
+
+Coefs<-summary(FR1)$coefficients[,1]
+Coefs<-Coefs[grep("log",names(Coefs))]
+Slopes<-data.frame(Lat=as.numeric(levels(Flwr$Pop)),m=Coefs)
+Slopes$m<-Slopes$m+Slopes$m[1] # Calculate slopes
+Slopes$m[1]<-Slopes$m[1]/2 
+qplot(Lat,m,data=Slopes)+geom_smooth(method='lm')+theme_bw()
+summary(lm(m~Lat,data=Slopes))
+```
+
+
+
+
+
