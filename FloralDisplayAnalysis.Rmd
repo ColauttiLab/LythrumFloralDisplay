@@ -97,9 +97,25 @@ max(Flwr$AbsDay,na.rm=T)
 ?gam
 Mod1<-gam(OpFlwr ~ s(AbsDay), data=Flwr[Flwr$Num == 3,])
 summary(Mod1)
+PredDay<-predict(Mod1,newdata=data.frame(AbsDay=c(0:125)))
+qplot(x=c(0:125),y=PredDay)
 
 ```
-
+## Example function
+```{r}
+PredictDay<-function(fam=NA,days=c(0:125)){
+  Mod1<-gam(OpFlwr ~ s(AbsDay), data=Flwr[Flwr$Num == fam,])
+  PredDay<-predict(Mod1,newdata=data.frame(AbsDay=c(0:125)))
+  return(PredDay)
+}
+qplot(x=c(0:125),y=PredictDay(fam=3))
+```
+## For loop example
+```{r}
+for(i in 1:3){
+  print(PredictDay(fam=i))
+}
+```
 ## Example prediction from a GAM 
 
 ```{r}
