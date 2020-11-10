@@ -69,10 +69,11 @@ Flwr$StdOpFlwr<-ave(Flwr$OpFlwr,Flwr$Num,FUN=FlwrStd2)
 ## Experimenting with options
 ```{r}
 # Fit quadratic
-qplot(x=AbsDay,y=OpFlwr,data=
+Dale<- qplot(x=AbsDay,y=OpFlwr,data=
         Flwr[Flwr$Num %in% c(1:3),],colour=as.factor(Num),
       alpha=I(0.3)) + theme_bw() + 
   geom_smooth(se=F,method="gam") # gam (generalized additive model)
+
 
 # Other smoothing options to try
 #  geom_smooth(method="lm",formula= y ~ x +I(x^2), se=F) # Quadratic
@@ -96,6 +97,7 @@ max(Flwr$AbsDay,na.rm=T)
 ?gam
 Mod1<-gam(OpFlwr ~ s(AbsDay), data=Flwr[Flwr$Num == 3,])
 summary(Mod1)
+
 ```
 
 ## Example prediction from a GAM 
