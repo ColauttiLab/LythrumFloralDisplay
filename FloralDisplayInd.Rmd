@@ -133,6 +133,7 @@ KurtosisRD<-c()
 SkewnessRD<-c()
 VarianceRD<-c()
 MeanFDRD<-c()
+EndD<-c()
 ##New moments for-loop with new dataset. 
 Mom<-for( j in 1:length(Individual_ID)){
     count=count+1
@@ -184,6 +185,7 @@ MeanVarianceSTD<-c()
 MeanSkewnessSTD<-c()
 MeanKurtosisSTD<-c()
 MeanFDSTD<-c()
+MeanEnd<-c()
 ##Find population averages for each moment.
 Mom<-for( j in 1:length(PopCode)){
   Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
@@ -197,6 +199,7 @@ Mom<-for( j in 1:length(PopCode)){
   MeanSkewS<-mean(Focal$SkewnessSTD,na.rm=TRUE)
   MeanKurtS<-mean(Focal$KurtosisSTD,na.rm=TRUE)
   MeanFDS<-mean(Focal$MeanFDSTD,na.rm=TRUE)
+  EndDate<-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
   Code<-append(Code,PopCode[j])
   MeanVariance<-append(MeanVariance,MeanVar)
   MeanSkewness<-append(MeanSkewness,MeanSkew)
@@ -208,7 +211,8 @@ Mom<-for( j in 1:length(PopCode)){
   MeanSkewnessSTD<-append(MeanSkewnessSTD,MeanSkewS)
   MeanKurtosisSTD<-append(MeanKurtosisSTD,MeanKurtS)
   MeanFDSTD<-append(MeanFDSTD,MeanFDS)
-  df<-data.frame(Code,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
+  MeanEnd<-append(MeanEnd,EndDate)
+  df<-data.frame(Code,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanEnd,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
 } 
 
 path_out = './data'
