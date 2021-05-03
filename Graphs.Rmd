@@ -29,28 +29,27 @@ theme_custom<-function(base_size = 24, base_family = ""){
 
 ```{r}
 #Julian day first flower x Latitude
-FirstFlwr<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSD)) + labs(x="Latitude",y="Flowering Start Date",title="Start Date of Flowering Schedule by Latitude") + theme_custom() + geom_abline(intercept=142.861,slope=-2.769,colour="red")
+FirstFlwr<- ggplot(data=dat,mapping=aes(x=Latitude,y=Start)) + geom_point() + labs(x="Latitude",y="Day",title="Day of first flower") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 FirstFlwr
 
-reg4<-lm(MeanSD~Latitude,data=dat)
+reg4<-lm(Start~Latitude,data=dat)
 summary(reg4)
 
-
 #Duration x Latitude
-Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanDuration)) + labs(x="Latitude",y="Flowering Duration",title="Duration of Flowering Schedule by Latitude") + theme_custom()
+Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=Duration)) + labs(x="Latitude",y="Days",title="Floweirng Duration") + theme_custom()
 
 Duration
 
-reg5<-lm(MeanDuration~Latitude,data=dat)
+reg5<-lm(Duration~Latitude,data=dat)
 summary(reg5)
 
 #End Date x Latitude
-EndDate<-ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanEnd)) + labs(x="Latitude",y="Flowering End Date",title="End Date of Flowering Schedule by Latitude") + theme_custom() + geom_abline(intercept=193.986,slope=-3.008,colour="red")
+EndDate<-ggplot(data=dat,mapping=aes(x=Latitude,y=End)) + geom_point() + labs(x="Latitude",y="Day",title="Last day of flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 EndDate
 
-reg6<-lm(MeanEnd~Latitude,data=dat)
+reg6<-lm(End~Latitude,data=dat)
 summary(reg6)
 
 ```
@@ -62,48 +61,36 @@ summary(reg6)
 (Area under flowering schedule curve = 1)
 
 ```{r standardized data graphs}
+# Peak (mean) flowering x Latitude
+Peak <- ggplot(data=dat,mapping=aes(x=Latitude,y=Peak)) + geom_point() + labs(x="Latitude",y="Peak",title="Peak flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+
+Peak
+
+reg0<-lm(Peak~Latitude,data=dat)
+summary(reg0)
+
 # Variance x Latitude
-VarST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanVarianceSTD)) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=98.988 ,slope=-1.698,colour="red")
+VarST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Var)) + geom_point() + labs(x="Latitude",y="Variance",title="Variance of flowering schedule") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 VarST
 
-reg1<-lm(MeanVarianceSTD~Latitude,data=dat)
+reg1<-lm(Var~Latitude,data=dat)
 summary(reg1)
 
 #Skew x Latitude
-SkewST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSkewnessSTD)) + labs(x="Latitude",y="Skewness",title="Skewness of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=-8829.4,slope=174.4,colour="red")
+SkewST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Skew)) + geom_point() + labs(x="Latitude",y="Skew Coef",title="Skewness of Flowering Schedule") + theme_custom()
 
 SkewST
 
-reg2<-lm(MeanSkewnessSTD~Latitude,data=dat)
+reg2<-lm(Skew~Latitude,data=dat)
 summary(reg2)
 
 #Kurtosis x Latitude
-KurtST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanKurtosisSTD)) + labs(x="Latitude",y="Kurtosis",title="Kurtosis of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=502509,slope=-10353,colour="red")
+KurtST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Kurt)) + geom_point() + labs(x="Latitude",y="Kurtosis Coef",title="Kurtosis of Flowering Schedule") + theme_custom()
 
 KurtST
 
-reg3<-lm(MeanKurtosisSTD~Latitude,data=dat)
+reg3<-lm(Kurt~Latitude,data=dat)
 summary(reg3)
 ```
 
-# Raw curves
-
-(Area under flowering schedule curves = total number of flowers produced)
-
-```{r raw data graphs}
-# Variance x Latitude
-VarR<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanVariance)) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule by Latitude (Raw Data)") + theme(legend.position="none",plot.title = element_text(size=11))+ geom_abline(intercept=870.88,slope=-12.75,colour="red")
-reg6<-lm(MeanVariance~Latitude,data=dat)
-summary(reg6)
-
-#Skew x Latitude
-SkewR<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSkewness)) + labs(x="Latitude",y="Skewness",title="Skewness of Flowering Schedule by Latitude (Raw Data)") + theme(legend.position="none",plot.title = element_text(size=11)) 
-reg7<-lm(MeanSkewness~Latitude,data=dat)
-summary(reg7)
-
-#Kurtosis x Latitude
-KurtR<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanKurtosis)) + labs(x="Latitude",y="Kurtosis",title="Kurtosis of Flowering Schedule by Latitude (Raw Data)") + theme(legend.position="none",plot.title = element_text(size=11)) 
-reg8<-lm(MeanKurtosis~Latitude,data=dat)
-summary(reg8)
-```

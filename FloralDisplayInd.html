@@ -355,6 +355,8 @@ pre code {
 </div>
 
 
+<div id="setup" class="section level1">
+<h1>Setup</h1>
 <pre class="r"><code>library(dplyr)</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;dplyr&#39;</code></pre>
@@ -385,7 +387,7 @@ library(zoo)</code></pre>
 <pre class="r"><code>dat&lt;-read.csv(&quot;./LythrumDisplay2008.csv&quot;)
 dat&lt;-dat[dat$Num!=187,]
 dat&lt;-dat[dat$Num!=440,]
-LythrumDisplayInd&lt;-dplyr :: select (dat,-Row,-End,-(Veg:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
+LythrumDisplayInd&lt;-dplyr :: select (dat,-Row,-End,-(d0:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
 
 
 ## Manipulate original dataset to include absolute day of flowering
@@ -393,377 +395,128 @@ Days&lt;-names(dat)[grep(&quot;d[0-9]&quot;,names(dat))] # Vector of names
 Flwr&lt;-dat %&gt;% gather(all_of(Days),key=&quot;RelDay&quot;,value=&quot;OpFlwr&quot;) # Rearrange
 Flwr$RelDay&lt;-as.numeric(gsub(&quot;d&quot;,&quot;&quot;,Flwr$RelDay)) # Remove &#39;d&#39; from day
 Flwr$AbsDay&lt;-Flwr$RelDay+Flwr$Start # Add absolute day</code></pre>
-<pre class="r"><code>Individual_ID&lt;-unique(Flwr$Num) 
+</div>
+<div id="convert-to-long-format" class="section level1">
+<h1>Convert to long format</h1>
+<pre class="r"><code>Ind&lt;-unique(Flwr$Num) 
 
 ##Extend AbsDay to be 0:125 with OpFlwr values being NA on added rows of AbsDay.
 MasterData&lt;-matrix(nrow=0,ncol=3)
 colnames(MasterData)&lt;-c(&quot;AbsDay&quot;,&quot;OpFlwr&quot;,&quot;Individual&quot;)
-for (i in 1:length(Individual_ID)) {
-  Focal&lt;-subset(Flwr,Flwr$Num==Individual_ID[i])
+for (i in 1:length(Ind)) {
+  Focal&lt;-subset(Flwr,Flwr$Num==Ind[i])
   Start&lt;-min(Focal$AbsDay)-1 #Day that flowering was observed to start.
- End&lt;-max(Focal$AbsDay)+1 #Day that flowering was observed to end.
-    if (End == 126|End == 125) { #Trouble shooting for when flowering end date was 125 or 126.
+  End&lt;-max(Focal$AbsDay)+1 #Day that flowering was observed to end.
+    
+  if (End == 126|End == 125) { #Trouble shooting for when flowering end date was 125 or 126.
     OpFlwr&lt;-c(rep(NA,length(0:Start)),Focal$OpFlwr) #rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr
     AbsDay&lt;-c(0:Start,Focal$AbsDay)
-  } 
-  else {
+  } else {
     OpFlwr&lt;-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))#rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr until end of observed flowering, then rep 0
     OpFlwr&lt;-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))
     AbsDay&lt;-c(0:Start,Focal$AbsDay,End:125)
 }
-  Individual&lt;-c(rep(Individual_ID[i],length(AbsDay))) #Individual column
+  Individual&lt;-c(rep(Ind[i],length(AbsDay))) #Individual column
   NewData&lt;-data.frame(AbsDay,OpFlwr,Individual) #New data frame for each individual
   MasterData&lt;-rbind(MasterData,NewData) #New data frame containing information for all individuals
-  #print(Individual_ID[i])
-}
-
-
-## Function for imputing missing values on days between censussing.
-PredictDay&lt;-function(Num,df){
-AbsDay&lt;-c(0:125)
-PredDay&lt;-rep(NA,length(AbsDay))
-PredDay[df$AbsDay[df$Individual==Num]+1]&lt;-df$OpFlwr[df$Individual==Num] # Add observed flower counts to predday
+  #print(Ind[i])
+}</code></pre>
+</div>
+<div id="impute-between-census-dates" class="section level1">
+<h1>Impute between census dates</h1>
+<pre class="r"><code>PredictDay&lt;-function(Num,df){
+  AbsDay&lt;-c(0:125)
+  PredDay&lt;-rep(NA,length(AbsDay))
+  PredDay[df$AbsDay[df$Individual==Num]+1]&lt;-df$OpFlwr[df$Individual==Num] # Add observed flower counts to predday
 # is.na(PredDay) # We have to remove NAs at the beginning and end of the observed OpFlwr values to get proper LI inputs. 
-if(is.na(PredDay[1])){
-  PredDay[1]&lt;-0
-}
-if(is.na(PredDay[length(PredDay)])){
-  PredDay[length(PredDay)]&lt;-0
-}
-PredDay&lt;-na.approx(PredDay,na.rm=F)
-PredDay[is.na(PredDay)]&lt;-0
-return(PredDay)
+  if(is.na(PredDay[1])){
+    PredDay[1]&lt;-0
+  }
+  
+  if(is.na(PredDay[length(PredDay)])){
+    PredDay[length(PredDay)]&lt;-0
+  }
+  
+  PredDay&lt;-na.approx(PredDay,na.rm=F)
+  PredDay[is.na(PredDay)]&lt;-0
+
+  return(PredDay)
 }
 
 ## Put new extended and imputed data points into long-form data frame.
 df3&lt;-matrix(ncol=5,nrow=0)
 colnames(df3)&lt;-c(&quot;Flowers&quot;,&quot;Individual.x&quot;,&quot;Days&quot;,&quot;OpFlwr&quot;,&quot;Individual.y&quot;)
-Individual_ID&lt;-unique(MasterData$Individual)
+Ind&lt;-unique(MasterData$Individual)
 Days&lt;-c()
 Individual&lt;-c()
 Flowers&lt;-c()
-count=0
-for( j in 1:length(Individual_ID)){
-    count=count+1
-  FocalFrame&lt;-MasterData[MasterData$Individual==Individual_ID[j],]
-  Flowers&lt;-PredictDay(Num=Individual_ID[j],df=MasterData)#Here use j to subset each individual in the individual ID vector. 
-  Individual&lt;-rep(Individual_ID[j], times=length(0:125)) #Here to identify the individual, we also need to subset the Individual_ID vector instead. 
+for( j in 1:length(Ind)){
+  FocalFrame&lt;-MasterData[MasterData$Individual==Ind[j],]
+  Flowers&lt;-PredictDay(Num=Ind[j],df=MasterData)#Here use j to subset each individual in the individual ID vector. 
+  Individual&lt;-rep(Ind[j], times=length(0:125)) #Here to identify the individual, we also need to subset the Ind vector instead. 
   Days&lt;-0:125
   df1&lt;-data.frame(Flowers,Individual,Days)
   df2&lt;-df1 %&gt;% left_join(FocalFrame,by=c(&quot;Days&quot;=&quot;AbsDay&quot;)) #Joining new data frame (with GAM predictions) with raw data frame.
   df3&lt;-rbind(df3,df2)
-}
-count </code></pre>
-<pre><code>## [1] 386</code></pre>
+}</code></pre>
 <pre class="r"><code>#Find moments.
-KurtosisSTD&lt;-c()
-SkewnessSTD&lt;-c()
-VarianceSTD&lt;-c()
-MeanFDSTD&lt;-c()
+DisplayInd&lt;-data.frame()
+
 ##New moments for-loop with new dataset. 
-Mom&lt;-for( j in 1:length(Individual_ID)){
-    count=count+1
-  Focal&lt;-df3[df3$Individual.x==Individual_ID[j],]
+for(j in 1:length(Ind)){
+  Focal&lt;-df3[df3$Individual.x==Ind[j],]
   pDays&lt;-Focal$OpFlwr/sum(Focal$OpFlwr,na.rm=TRUE) # Proportion of total open flowers open on each day 
   WeightDays&lt;-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
   Mean&lt;-sum(WeightDays,na.rm=TRUE) # Mean value.
   Var&lt;-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
+  
   CoeffVar&lt;-Var/(Mean)
-  CoeffKurt&lt;-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
   CoeffSkew&lt;-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
-  KurtosisSTD&lt;-append(KurtosisSTD,CoeffKurt)
-  SkewnessSTD&lt;-append(SkewnessSTD,CoeffSkew)
-  VarianceSTD&lt;-append(VarianceSTD,CoeffVar)
-  MeanFDSTD&lt;-append(MeanFDSTD,Mean) 
+  CoeffKurt&lt;-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
+
+  DisplayInd&lt;-rbind(DisplayInd,
+                    c(Ind[j], Mean, Var, CoeffSkew, CoeffKurt))
+  
 } 
+names(DisplayInd)&lt;-c(&quot;Num&quot;,&quot;Peak&quot;,&quot;Var&quot;,&quot;Skew&quot;,&quot;Kurt&quot;)
 
-KurtosisSTD[is.nan(KurtosisSTD)]&lt;-0
-SkewnessSTD[is.nan(SkewnessSTD)]&lt;-0
-VarianceSTD[is.nan(VarianceSTD)]&lt;-0
+LythrumDisplayInd &lt;- full_join(LythrumDisplayInd,DisplayInd,by=&quot;Num&quot;)
 
-LythrumDisplayInd &lt;-LythrumDisplayInd %&gt;% cbind(KurtosisSTD,SkewnessSTD,VarianceSTD,MeanFDSTD)</code></pre>
-<pre class="r"><code># Convert raw data to long format.
-df3&lt;-dplyr :: select(df3,-Individual.y,-OpFlwr) #Remove unnecessary columns.
-Mating.Matrix.Data_Wide&lt;-df3 %&gt;% pivot_wider(names_from = Days,values_from = Flowers) #Convert to wide format. 
-Mating.Matrix.Data_Wide&lt;-dplyr :: select(Mating.Matrix.Data_Wide,-(Individual.x))  #Remove individual column.
+write.csv(LythrumDisplayInd,&quot;FloralDisplayInd.csv&quot;,row.names=F)</code></pre>
+<pre class="r"><code>PopCode&lt;-unique(LythrumDisplayInd$Pop)
 
-#Find moments.
-KurtosisRD&lt;-c()
-SkewnessRD&lt;-c()
-VarianceRD&lt;-c()
-MeanFDRD&lt;-c()
-EndD&lt;-c()
-##New moments for-loop with new dataset. 
-Mom&lt;-for( j in 1:length(Individual_ID)){
-    count=count+1
-  Focal&lt;-Mating.Matrix.Data_Wide[Individual_ID[j],]
-  if (j==309|310){
-    End&lt;-max.col(Focal != 0, &#39;last&#39;) + 1
-    Mean&lt;-sum(Focal,na.rm=TRUE)/End-1
-    Var&lt;-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
-    CoeffVar&lt;-Var/(Mean)
-    CoeffKurt&lt;-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
-    CoeffSkew&lt;-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2
-  }
-  else {
-  End&lt;-max.col(Focal != 0, &#39;last&#39;) + 1
-  Last&lt;-length(Focal)
-  Focal[,End:Last]&lt;-NA
-  Mean&lt;-sum(Focal,na.rm=TRUE)/End-1
-  Var&lt;-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
-  CoeffVar&lt;-Var/(Mean)
-  CoeffKurt&lt;-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
-  CoeffSkew&lt;-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2 }
-  KurtosisRD&lt;-append(KurtosisRD,CoeffKurt)
-  SkewnessRD&lt;-append(SkewnessRD,CoeffSkew)
-  VarianceRD&lt;-append(VarianceRD,CoeffVar)
-  MeanFDRD&lt;-append(MeanFDRD,Mean) 
-} </code></pre>
-<pre><code>## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced
-
-## Warning in sqrt(Var): NaNs produced</code></pre>
-<pre class="r"><code>KurtosisRD[is.nan(KurtosisRD)]&lt;-0
-SkewnessRD[is.nan(SkewnessRD)]&lt;-0
-VarianceRD[is.nan(VarianceRD)]&lt;-0
-
-LythrumDisplayInd &lt;-LythrumDisplayInd %&gt;% cbind(KurtosisRD,SkewnessRD,VarianceRD,MeanFDRD)
-
-write.csv(LythrumDisplayInd,&quot;FloralDisplayInd.csv&quot;)</code></pre>
-<pre class="r"><code># Calculate population means
-PopCode&lt;-as.character(unique(dat$Pop))
-Code&lt;-c()
-Latitude&lt;-c()
-MeanVariance&lt;-c()
-MeanSkewness&lt;-c()
-MeanKurtosis&lt;-c()
-MeanFD&lt;-c()
-MeanSD&lt;-c()
-MeanDuration&lt;-c()
-MeanVarianceSTD&lt;-c()
-MeanSkewnessSTD&lt;-c()
-MeanKurtosisSTD&lt;-c()
-MeanFDSTD&lt;-c()
-MeanEnd&lt;-c()
+# Calculate population means
+PopMeans&lt;-data.frame()
 ##Find population averages for each moment.
-Mom&lt;-for( j in 1:length(PopCode)){
+for(j in 1:length(PopCode)){
   Focal&lt;-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
-  MeanVar&lt;-mean(Focal$VarianceRD,na.rm=TRUE)
-  MeanSkew&lt;-mean(Focal$SkewnessRD,na.rm=TRUE)
-  MeanKurt&lt;-mean(Focal$KurtosisRD,na.rm=TRUE)
-  FD&lt;-mean(Focal$MeanFDRD,na.rm=TRUE)
-  SD&lt;-mean(Focal$Start,na.rm=TRUE)
+
+  Pop&lt;-unique(Focal$Pop)
+  Latitude&lt;-unique(Focal$Lat)
+
+  TotFlwr&lt;-mean(Focal$TotFlwr, na.rm=T)
+  Start&lt;-mean(Focal$Start,na.rm=TRUE)
+  End&lt;-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
   Duration&lt;-mean(Focal$Duration,na.rm=TRUE)
-  MeanVarS&lt;-mean(Focal$VarianceSTD,na.rm=TRUE)
-  MeanSkewS&lt;-mean(Focal$SkewnessSTD,na.rm=TRUE)
-  MeanKurtS&lt;-mean(Focal$KurtosisSTD,na.rm=TRUE)
-  MeanFDS&lt;-mean(Focal$MeanFDSTD,na.rm=TRUE)
-  EndDate&lt;-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
-  Code&lt;-append(Code,PopCode[j])
-  Latitude&lt;-append(Latitude,unique(Focal$Lat))
-  MeanVariance&lt;-append(MeanVariance,MeanVar)
-  MeanSkewness&lt;-append(MeanSkewness,MeanSkew)
-  MeanKurtosis&lt;-append(MeanKurtosis,MeanKurt)
-  MeanFD&lt;-append(MeanFD,FD)
-  MeanSD&lt;-append(MeanSD,SD)
-  MeanDuration&lt;-append(MeanDuration,Duration)
-  MeanVarianceSTD&lt;-append(MeanVarianceSTD,MeanVarS)
-  MeanSkewnessSTD&lt;-append(MeanSkewnessSTD,MeanSkewS)
-  MeanKurtosisSTD&lt;-append(MeanKurtosisSTD,MeanKurtS)
-  MeanFDSTD&lt;-append(MeanFDSTD,MeanFDS)
-  MeanEnd&lt;-append(MeanEnd,EndDate)
-  df&lt;-data.frame(Code,Latitude,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanEnd,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
+  Peak&lt;-mean(Focal$Peak,na.rm=TRUE)
+  Var&lt;-mean(Focal$Var,na.rm=TRUE)
+  Skew&lt;-mean(Focal$Skew,na.rm=TRUE)
+  Kurt&lt;-mean(Focal$Kurt,na.rm=TRUE)
+  
+  PopMeans&lt;-rbind(PopMeans, c(
+                  Pop, Latitude, 
+                  TotFlwr, Start, End, Duration,
+                  Var, Skew, Kurt))
+
+  Pop&lt;-Latitude&lt;-TotFlwr&lt;-Start&lt;-End&lt;-Duration&lt;-PeakS&lt;-VarS&lt;-SkewS&lt;-KurtS&lt;-NA
 } 
 
+names(PopMeans)&lt;-c(&quot;Pop&quot;, &quot;Latitude&quot;, &quot;TotFlwr&quot;, 
+                   &quot;Start&quot;, &quot;End&quot;,&quot; Duration&quot;,
+                   &quot;VarS&quot;, &quot;SkewS&quot;, &quot;KurtS&quot;)
 
-write.csv(df,&quot;FloralDisplayPop.csv&quot;)</code></pre>
+write.csv(PopMeans,&quot;FloralDisplayPop.csv&quot;,row.names=F)</code></pre>
+</div>
 
 
 

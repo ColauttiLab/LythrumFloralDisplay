@@ -5,6 +5,8 @@ date: "20/04/2021"
 output: html_document
 ---
 
+# Setup
+
 ```{r data setup}
 library(dplyr)
 library(tidyr)
@@ -17,7 +19,7 @@ library(zoo)
 dat<-read.csv("./LythrumDisplay2008.csv")
 dat<-dat[dat$Num!=187,]
 dat<-dat[dat$Num!=440,]
-LythrumDisplayInd<-dplyr :: select (dat,-Row,-End,-(Veg:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
+LythrumDisplayInd<-dplyr :: select (dat,-Row,-End,-(d0:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
 
 
 ## Manipulate original dataset to include absolute day of flowering
@@ -28,203 +30,138 @@ Flwr$AbsDay<-Flwr$RelDay+Flwr$Start # Add absolute day
 
 ```
 
-```{r extend data points and put into new format}
+# Convert to long format
 
-Individual_ID<-unique(Flwr$Num) 
+```{r long format}
+
+Ind<-unique(Flwr$Num) 
 
 ##Extend AbsDay to be 0:125 with OpFlwr values being NA on added rows of AbsDay.
 MasterData<-matrix(nrow=0,ncol=3)
 colnames(MasterData)<-c("AbsDay","OpFlwr","Individual")
-for (i in 1:length(Individual_ID)) {
-  Focal<-subset(Flwr,Flwr$Num==Individual_ID[i])
+for (i in 1:length(Ind)) {
+  Focal<-subset(Flwr,Flwr$Num==Ind[i])
   Start<-min(Focal$AbsDay)-1 #Day that flowering was observed to start.
- End<-max(Focal$AbsDay)+1 #Day that flowering was observed to end.
-    if (End == 126|End == 125) { #Trouble shooting for when flowering end date was 125 or 126.
+  End<-max(Focal$AbsDay)+1 #Day that flowering was observed to end.
+    
+  if (End == 126|End == 125) { #Trouble shooting for when flowering end date was 125 or 126.
     OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr) #rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr
     AbsDay<-c(0:Start,Focal$AbsDay)
-  } 
-  else {
+  } else {
     OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))#rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr until end of observed flowering, then rep 0
     OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))
     AbsDay<-c(0:Start,Focal$AbsDay,End:125)
 }
-  Individual<-c(rep(Individual_ID[i],length(AbsDay))) #Individual column
+  Individual<-c(rep(Ind[i],length(AbsDay))) #Individual column
   NewData<-data.frame(AbsDay,OpFlwr,Individual) #New data frame for each individual
   MasterData<-rbind(MasterData,NewData) #New data frame containing information for all individuals
-  #print(Individual_ID[i])
+  #print(Ind[i])
 }
+```
 
 
-## Function for imputing missing values on days between censussing.
+# Impute between census dates
+
+```{r}
 PredictDay<-function(Num,df){
-AbsDay<-c(0:125)
-PredDay<-rep(NA,length(AbsDay))
-PredDay[df$AbsDay[df$Individual==Num]+1]<-df$OpFlwr[df$Individual==Num] # Add observed flower counts to predday
+  AbsDay<-c(0:125)
+  PredDay<-rep(NA,length(AbsDay))
+  PredDay[df$AbsDay[df$Individual==Num]+1]<-df$OpFlwr[df$Individual==Num] # Add observed flower counts to predday
 # is.na(PredDay) # We have to remove NAs at the beginning and end of the observed OpFlwr values to get proper LI inputs. 
-if(is.na(PredDay[1])){
-  PredDay[1]<-0
-}
-if(is.na(PredDay[length(PredDay)])){
-  PredDay[length(PredDay)]<-0
-}
-PredDay<-na.approx(PredDay,na.rm=F)
-PredDay[is.na(PredDay)]<-0
-return(PredDay)
+  if(is.na(PredDay[1])){
+    PredDay[1]<-0
+  }
+  
+  if(is.na(PredDay[length(PredDay)])){
+    PredDay[length(PredDay)]<-0
+  }
+  
+  PredDay<-na.approx(PredDay,na.rm=F)
+  PredDay[is.na(PredDay)]<-0
+
+  return(PredDay)
 }
 
 ## Put new extended and imputed data points into long-form data frame.
 df3<-matrix(ncol=5,nrow=0)
 colnames(df3)<-c("Flowers","Individual.x","Days","OpFlwr","Individual.y")
-Individual_ID<-unique(MasterData$Individual)
+Ind<-unique(MasterData$Individual)
 Days<-c()
 Individual<-c()
 Flowers<-c()
-count=0
-for( j in 1:length(Individual_ID)){
-    count=count+1
-  FocalFrame<-MasterData[MasterData$Individual==Individual_ID[j],]
-  Flowers<-PredictDay(Num=Individual_ID[j],df=MasterData)#Here use j to subset each individual in the individual ID vector. 
-  Individual<-rep(Individual_ID[j], times=length(0:125)) #Here to identify the individual, we also need to subset the Individual_ID vector instead. 
+for( j in 1:length(Ind)){
+  FocalFrame<-MasterData[MasterData$Individual==Ind[j],]
+  Flowers<-PredictDay(Num=Ind[j],df=MasterData)#Here use j to subset each individual in the individual ID vector. 
+  Individual<-rep(Ind[j], times=length(0:125)) #Here to identify the individual, we also need to subset the Ind vector instead. 
   Days<-0:125
   df1<-data.frame(Flowers,Individual,Days)
   df2<-df1 %>% left_join(FocalFrame,by=c("Days"="AbsDay")) #Joining new data frame (with GAM predictions) with raw data frame.
   df3<-rbind(df3,df2)
 }
-count 
+
  
 ```
 
 ```{r find moments of standardized data}
 #Find moments.
-KurtosisSTD<-c()
-SkewnessSTD<-c()
-VarianceSTD<-c()
-MeanFDSTD<-c()
+DisplayInd<-data.frame()
+
 ##New moments for-loop with new dataset. 
-for( j in 1:length(Individual_ID)){
-    count=count+1
-  Focal<-df3[df3$Individual.x==Individual_ID[j],]
+for(j in 1:length(Ind)){
+  Focal<-df3[df3$Individual.x==Ind[j],]
   pDays<-Focal$OpFlwr/sum(Focal$OpFlwr,na.rm=TRUE) # Proportion of total open flowers open on each day 
   WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
   Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
   Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
+  
   CoeffVar<-Var/(Mean)
-  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
   CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
-  KurtosisSTD<-append(KurtosisSTD,CoeffKurt)
-  SkewnessSTD<-append(SkewnessSTD,CoeffSkew)
-  VarianceSTD<-append(VarianceSTD,CoeffVar)
-  MeanFDSTD<-append(MeanFDSTD,Mean) 
-} 
+  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
 
-KurtosisSTD[is.nan(KurtosisSTD)]<-0
-SkewnessSTD[is.nan(SkewnessSTD)]<-0
-VarianceSTD[is.nan(VarianceSTD)]<-0
-
-LythrumDisplayInd <-LythrumDisplayInd %>% cbind(KurtosisSTD,SkewnessSTD,VarianceSTD,MeanFDSTD)
-```
-
-
-```{r find moments of raw data}
-# Convert raw data to long format.
-df3<-dplyr :: select(df3,-Individual.y,-OpFlwr) #Remove unnecessary columns.
-Mating.Matrix.Data_Wide<-df3 %>% pivot_wider(names_from = Days,values_from = Flowers) #Convert to wide format. 
-Mating.Matrix.Data_Wide<-dplyr :: select(Mating.Matrix.Data_Wide,-(Individual.x))  #Remove individual column.
-
-#Find moments.
-KurtosisRD<-c()
-SkewnessRD<-c()
-VarianceRD<-c()
-MeanFDRD<-c()
-EndD<-c()
-
-count<-0
-##New moments for-loop with new dataset. 
-for( j in 1:length(Individual_ID)){
-  count=count+1
-  Focal<-Mating.Matrix.Data_Wide[Individual_ID[j],]
-  if (j %in% c(309,310)){
-    End<-max.col(Focal != 0, 'last') + 1
-    Mean<-sum(Focal,na.rm=TRUE)/End-1
-    Var<-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
-    CoeffVar<-Var/(Mean)
-    CoeffKurt<-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
-    CoeffSkew<-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2
-  } else {
-  End<-max.col(Focal != 0, 'last') + 1
-  Last<-length(Focal)
-  Focal[,End:Last]<-NA
-  Mean<-sum(Focal,na.rm=TRUE)/End-1
-  Var<-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
-  CoeffVar<-Var/(Mean)
-  CoeffKurt<-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
-  CoeffSkew<-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2 
-  }
+  DisplayInd<-rbind(DisplayInd,
+                    c(Ind[j], Mean, Var, CoeffSkew, CoeffKurt))
   
-  print(paste("j: ",Var))
-  
-  KurtosisRD<-append(KurtosisRD,CoeffKurt)
-  SkewnessRD<-append(SkewnessRD,CoeffSkew)
-  VarianceRD<-append(VarianceRD,CoeffVar)
-  MeanFDRD<-append(MeanFDRD,Mean) 
 } 
+names(DisplayInd)<-c("Num","Peak","Var","Skew","Kurt")
 
-KurtosisRD[is.nan(KurtosisRD)]<-0
-SkewnessRD[is.nan(SkewnessRD)]<-0
-VarianceRD[is.nan(VarianceRD)]<-0
+LythrumDisplayInd <- full_join(LythrumDisplayInd,DisplayInd,by="Num")
 
-LythrumDisplayInd <-LythrumDisplayInd %>% cbind(KurtosisRD,SkewnessRD,VarianceRD,MeanFDRD)
-
-write.csv(LythrumDisplayInd,"FloralDisplayInd.csv")
+write.csv(LythrumDisplayInd,"FloralDisplayInd.csv",row.names=F)
 ```
 
 ```{r population means}
+PopCode<-unique(LythrumDisplayInd$Pop)
+
 # Calculate population means
-PopCode<-as.character(unique(dat$Pop))
-Code<-c()
-Latitude<-c()
-MeanVariance<-c()
-MeanSkewness<-c()
-MeanKurtosis<-c()
-MeanFD<-c()
-MeanSD<-c()
-MeanDuration<-c()
-MeanVarianceSTD<-c()
-MeanSkewnessSTD<-c()
-MeanKurtosisSTD<-c()
-MeanFDSTD<-c()
-MeanEnd<-c()
+PopMeans<-data.frame()
 ##Find population averages for each moment.
-Mom<-for( j in 1:length(PopCode)){
+for(j in 1:length(PopCode)){
   Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
-  MeanVar<-mean(Focal$VarianceRD,na.rm=TRUE)
-  MeanSkew<-mean(Focal$SkewnessRD,na.rm=TRUE)
-  MeanKurt<-mean(Focal$KurtosisRD,na.rm=TRUE)
-  FD<-mean(Focal$MeanFDRD,na.rm=TRUE)
-  SD<-mean(Focal$Start,na.rm=TRUE)
+
+  Pop<-unique(Focal$Pop)
+  Latitude<-unique(Focal$Lat)
+
+  TotFlwr<-mean(Focal$TotFlwr, na.rm=T)
+  Start<-mean(Focal$Start,na.rm=TRUE)
+  End<-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
   Duration<-mean(Focal$Duration,na.rm=TRUE)
-  MeanVarS<-mean(Focal$VarianceSTD,na.rm=TRUE)
-  MeanSkewS<-mean(Focal$SkewnessSTD,na.rm=TRUE)
-  MeanKurtS<-mean(Focal$KurtosisSTD,na.rm=TRUE)
-  MeanFDS<-mean(Focal$MeanFDSTD,na.rm=TRUE)
-  EndDate<-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
-  Code<-append(Code,PopCode[j])
-  Latitude<-append(Latitude,unique(Focal$Lat))
-  MeanVariance<-append(MeanVariance,MeanVar)
-  MeanSkewness<-append(MeanSkewness,MeanSkew)
-  MeanKurtosis<-append(MeanKurtosis,MeanKurt)
-  MeanFD<-append(MeanFD,FD)
-  MeanSD<-append(MeanSD,SD)
-  MeanDuration<-append(MeanDuration,Duration)
-  MeanVarianceSTD<-append(MeanVarianceSTD,MeanVarS)
-  MeanSkewnessSTD<-append(MeanSkewnessSTD,MeanSkewS)
-  MeanKurtosisSTD<-append(MeanKurtosisSTD,MeanKurtS)
-  MeanFDSTD<-append(MeanFDSTD,MeanFDS)
-  MeanEnd<-append(MeanEnd,EndDate)
-  df<-data.frame(Code,Latitude,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanEnd,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
+  Peak<-mean(Focal$Peak,na.rm=TRUE)
+  Var<-mean(Focal$Var,na.rm=TRUE)
+  Skew<-mean(Focal$Skew,na.rm=TRUE)
+  Kurt<-mean(Focal$Kurt,na.rm=TRUE)
+  
+  PopMeans<-rbind(PopMeans, c(
+                  Pop, Latitude, 
+                  TotFlwr, Start, End, Duration,
+                  Peak, Var, Skew, Kurt))
+
+  Pop<-Latitude<-TotFlwr<-Start<-End<-Duration<-PeakS<-VarS<-SkewS<-KurtS<-NA
 } 
 
+names(PopMeans)<-c("Pop", "Latitude", "TotFlwr", 
+                   "Start", "End","Duration",
+                   "Peak", "Var", "Skew", "Kurt")
 
-write.csv(df,"FloralDisplayPop.csv")
+write.csv(PopMeans,"FloralDisplayPop.csv",row.names=F)
 
 ```
