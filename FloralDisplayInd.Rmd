@@ -12,8 +12,9 @@ library(mgcv)
 library(ggplot2)
 library(moments)
 library(readr)
+library(zoo)
 
-dat<-read.csv("./data/LythrumDisplay2008.csv")
+dat<-read.csv("./LythrumDisplay2008.csv")
 dat<-dat[dat$Num!=187,]
 dat<-dat[dat$Num!=440,]
 LythrumDisplayInd<-dplyr :: select (dat,-Row,-End,-(Veg:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
@@ -50,7 +51,7 @@ for (i in 1:length(Individual_ID)) {
   Individual<-c(rep(Individual_ID[i],length(AbsDay))) #Individual column
   NewData<-data.frame(AbsDay,OpFlwr,Individual) #New data frame for each individual
   MasterData<-rbind(MasterData,NewData) #New data frame containing information for all individuals
-  print(Individual_ID[i])
+  #print(Individual_ID[i])
 }
 
 
@@ -100,16 +101,16 @@ SkewnessSTD<-c()
 VarianceSTD<-c()
 MeanFDSTD<-c()
 ##New moments for-loop with new dataset. 
-Mom<-for( j in 1:length(Individual_ID)){
+for( j in 1:length(Individual_ID)){
     count=count+1
   Focal<-df3[df3$Individual.x==Individual_ID[j],]
   pDays<-Focal$OpFlwr/sum(Focal$OpFlwr,na.rm=TRUE) # Proportion of total open flowers open on each day 
   WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
   Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
-  Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Should this be divided by the sample size, not multiplied? Online, the formula is sum of(values-mean)^2/sample size-1
+  Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
   CoeffVar<-Var/(Mean)
-  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)
-  CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)
+  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
+  CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
   KurtosisSTD<-append(KurtosisSTD,CoeffKurt)
   SkewnessSTD<-append(SkewnessSTD,CoeffSkew)
   VarianceSTD<-append(VarianceSTD,CoeffVar)
@@ -122,6 +123,8 @@ VarianceSTD[is.nan(VarianceSTD)]<-0
 
 LythrumDisplayInd <-LythrumDisplayInd %>% cbind(KurtosisSTD,SkewnessSTD,VarianceSTD,MeanFDSTD)
 ```
+
+
 ```{r find moments of raw data}
 # Convert raw data to long format.
 df3<-dplyr :: select(df3,-Individual.y,-OpFlwr) #Remove unnecessary columns.
@@ -134,19 +137,20 @@ SkewnessRD<-c()
 VarianceRD<-c()
 MeanFDRD<-c()
 EndD<-c()
+
+count<-0
 ##New moments for-loop with new dataset. 
-Mom<-for( j in 1:length(Individual_ID)){
-    count=count+1
+for( j in 1:length(Individual_ID)){
+  count=count+1
   Focal<-Mating.Matrix.Data_Wide[Individual_ID[j],]
-  if (j==309|310){
+  if (j %in% c(309,310)){
     End<-max.col(Focal != 0, 'last') + 1
     Mean<-sum(Focal,na.rm=TRUE)/End-1
     Var<-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
     CoeffVar<-Var/(Mean)
     CoeffKurt<-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
     CoeffSkew<-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2
-  }
-  else {
+  } else {
   End<-max.col(Focal != 0, 'last') + 1
   Last<-length(Focal)
   Focal[,End:Last]<-NA
@@ -154,7 +158,11 @@ Mom<-for( j in 1:length(Individual_ID)){
   Var<-sum((Focal-Mean)^2/End-2,na.rm=TRUE)
   CoeffVar<-Var/(Mean)
   CoeffKurt<-sum((Focal-Mean)^4/sqrt(Var),na.rm=TRUE)/End-2
-  CoeffSkew<-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2 }
+  CoeffSkew<-sum((Focal-Mean)^3/sqrt(Var),na.rm=TRUE)/End-2 
+  }
+  
+  print(paste("j: ",Var))
+  
   KurtosisRD<-append(KurtosisRD,CoeffKurt)
   SkewnessRD<-append(SkewnessRD,CoeffSkew)
   VarianceRD<-append(VarianceRD,CoeffVar)
@@ -167,14 +175,14 @@ VarianceRD[is.nan(VarianceRD)]<-0
 
 LythrumDisplayInd <-LythrumDisplayInd %>% cbind(KurtosisRD,SkewnessRD,VarianceRD,MeanFDRD)
 
-path_out = './data'
-write.csv(LythrumDisplayInd,file.path(path_out,"FloralDisplayInd.csv"))
+write.csv(LythrumDisplayInd,"FloralDisplayInd.csv")
 ```
 
 ```{r population means}
 # Calculate population means
 PopCode<-as.character(unique(dat$Pop))
 Code<-c()
+Latitude<-c()
 MeanVariance<-c()
 MeanSkewness<-c()
 MeanKurtosis<-c()
@@ -201,6 +209,7 @@ Mom<-for( j in 1:length(PopCode)){
   MeanFDS<-mean(Focal$MeanFDSTD,na.rm=TRUE)
   EndDate<-mean(Focal$Start+Focal$Duration,na.rm=TRUE)
   Code<-append(Code,PopCode[j])
+  Latitude<-append(Latitude,unique(Focal$Lat))
   MeanVariance<-append(MeanVariance,MeanVar)
   MeanSkewness<-append(MeanSkewness,MeanSkew)
   MeanKurtosis<-append(MeanKurtosis,MeanKurt)
@@ -212,10 +221,10 @@ Mom<-for( j in 1:length(PopCode)){
   MeanKurtosisSTD<-append(MeanKurtosisSTD,MeanKurtS)
   MeanFDSTD<-append(MeanFDSTD,MeanFDS)
   MeanEnd<-append(MeanEnd,EndDate)
-  df<-data.frame(Code,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanEnd,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
+  df<-data.frame(Code,Latitude,MeanVariance,MeanSkewness,MeanKurtosis,MeanFD,MeanSD,MeanEnd,MeanDuration,MeanVarianceSTD,MeanSkewnessSTD,MeanKurtosisSTD,MeanFDSTD)
 } 
 
-path_out = './data'
-write.csv(df,file.path(path_out,"FloralDisplayPop.csv"))
+
+write.csv(df,"FloralDisplayPop.csv")
 
 ```

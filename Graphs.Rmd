@@ -5,8 +5,10 @@ date: "22/04/2021"
 output: html_document
 ---
 
+# Setup
+
 ```{r data setup}
-dat<-read.csv("./data/FloralDisplayPop.csv") # Latitudes of population origin were added to the csv file manually.
+dat<-read.csv("./FloralDisplayPop.csv") # Latitudes of population origin were added to the csv file manually.
 library(ggplot2)
 library(dplyr)
 
@@ -22,39 +24,73 @@ theme_custom<-function(base_size = 24, base_family = ""){
     )
 }
 ```
-```{r standardized data graphs}
-# Variance x Latitude
-VarST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanVarianceSTD)) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=98.988 ,slope=-1.698,colour="red")
-reg1<-lm(MeanVarianceSTD~Latitude,data=dat)
-summary(reg1)
 
-#Skew x Latitude
-SkewST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSkewnessSTD)) + labs(x="Latitude",y="Skewness",title="Skewness of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=-8829.4,slope=174.4,colour="red")
-reg2<-lm(MeanSkewnessSTD~Latitude,data=dat)
-summary(reg2)
+# Common Metrics
 
-#Kurtosis x Latitude
-KurtST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanKurtosisSTD)) + labs(x="Latitude",y="Kurtosis",title="Kurtosis of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=502509,slope=-10353,colour="red")
-reg3<-lm(MeanKurtosisSTD~Latitude,data=dat)
-summary(reg3)
-
+```{r}
 #Julian day first flower x Latitude
 FirstFlwr<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSD)) + labs(x="Latitude",y="Flowering Start Date",title="Start Date of Flowering Schedule by Latitude") + theme_custom() + geom_abline(intercept=142.861,slope=-2.769,colour="red")
+
+FirstFlwr
+
 reg4<-lm(MeanSD~Latitude,data=dat)
 summary(reg4)
 
 
 #Duration x Latitude
 Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanDuration)) + labs(x="Latitude",y="Flowering Duration",title="Duration of Flowering Schedule by Latitude") + theme_custom()
+
+Duration
+
 reg5<-lm(MeanDuration~Latitude,data=dat)
 summary(reg5)
 
 #End Date x Latitude
 EndDate<-ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanEnd)) + labs(x="Latitude",y="Flowering End Date",title="End Date of Flowering Schedule by Latitude") + theme_custom() + geom_abline(intercept=193.986,slope=-3.008,colour="red")
+
+EndDate
+
 reg6<-lm(MeanEnd~Latitude,data=dat)
 summary(reg6)
 
 ```
+
+
+
+# Standardized Curve
+
+(Area under flowering schedule curve = 1)
+
+```{r standardized data graphs}
+# Variance x Latitude
+VarST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanVarianceSTD)) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=98.988 ,slope=-1.698,colour="red")
+
+VarST
+
+reg1<-lm(MeanVarianceSTD~Latitude,data=dat)
+summary(reg1)
+
+#Skew x Latitude
+SkewST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanSkewnessSTD)) + labs(x="Latitude",y="Skewness",title="Skewness of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=-8829.4,slope=174.4,colour="red")
+
+SkewST
+
+reg2<-lm(MeanSkewnessSTD~Latitude,data=dat)
+summary(reg2)
+
+#Kurtosis x Latitude
+KurtST<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanKurtosisSTD)) + labs(x="Latitude",y="Kurtosis",title="Kurtosis of Flowering Schedule by Latitude (Standardized Data)") + theme_custom() + geom_abline(intercept=502509,slope=-10353,colour="red")
+
+KurtST
+
+reg3<-lm(MeanKurtosisSTD~Latitude,data=dat)
+summary(reg3)
+```
+
+# Raw curves
+
+(Area under flowering schedule curves = total number of flowers produced)
+
 ```{r raw data graphs}
 # Variance x Latitude
 VarR<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=MeanVariance)) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule by Latitude (Raw Data)") + theme(legend.position="none",plot.title = element_text(size=11))+ geom_abline(intercept=870.88,slope=-12.75,colour="red")
