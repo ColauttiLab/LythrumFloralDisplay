@@ -23,7 +23,7 @@ TO DO:
   # Data import & setup
 
 ```{r}
-Disp<-read.csv("LythrumDisplay2008.csv")
+Disp<-read.csv("./data/LythrumDisplay2008.csv")
 Disp$Block<-as.factor(gsub("[a-f]","",Disp$Row))
 Disp$RelFit<-Disp$HinfW/mean(Disp$HinfW,na.rm=T)
 head(Disp)

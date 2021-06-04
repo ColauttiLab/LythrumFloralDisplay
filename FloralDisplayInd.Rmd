@@ -16,7 +16,7 @@ library(moments)
 library(readr)
 library(zoo)
 
-dat<-read.csv("./LythrumDisplay2008.csv")
+dat<-read.csv("./data/LythrumDisplay2008.csv")
 dat<-dat[dat$Num!=187,]
 dat<-dat[dat$Num!=440,]
 LythrumDisplayInd<-dplyr :: select (dat,-Row,-End,-(d0:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
@@ -126,7 +126,7 @@ names(DisplayInd)<-c("Num","Peak","Var","Skew","Kurt")
 
 LythrumDisplayInd <- full_join(LythrumDisplayInd,DisplayInd,by="Num")
 
-write.csv(LythrumDisplayInd,"FloralDisplayInd.csv",row.names=F)
+write.csv(LythrumDisplayInd,"./data/FloralDisplayInd.csv",row.names=F)
 ```
 
 ```{r population means}
@@ -162,6 +162,6 @@ names(PopMeans)<-c("Pop", "Latitude", "TotFlwr",
                    "Start", "End","Duration",
                    "Peak", "Var", "Skew", "Kurt")
 
-write.csv(PopMeans,"FloralDisplayPop.csv",row.names=F)
+write.csv(PopMeans,"./data/FloralDisplayPop.csv",row.names=F)
 
 ```
