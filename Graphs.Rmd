@@ -95,17 +95,15 @@ summary(reg3)
 ```
 
 ```{r high and low variance graphs}
-# Need to clean up the theme of these graphs.
-library(ggplot2)
 #Low Variance
 x<-seq(0,125,by=1)
 y<-dnorm(x,mean=62.5,sd=6)
-LowVar<-qplot(x,y,geom="line") + ylim(0,0.07)
+LowVar<-qplot(x,y,geom="line") + ylim(0,0.07) + theme_custom()
 
 #High Variance
 x<-seq(0,125,by=1)
 y2<-dnorm(x,mean=62.5,sd=18)
-HighVar<-qplot(x,y2,geom="line") + ylim(0,0.07)
+HighVar<-qplot(x,y2,geom="line") + ylim(0,0.07) + theme_custom()
 
 HighVar
 LowVar
