@@ -1,0 +1,138 @@
+---
+title: "Mixed Models"
+output: html_document
+---
+
+Analysis of genetic (co)variation within and among populations
+
+# Setup and Import Data
+
+```{r}
+library(tidyverse)
+library(lme4)
+```
+
+
+```{r}
+InDat<-read.csv("./data/FloralDisplayInd.csv")
+```
+
+
+# Check data
+
+```{r}
+hist(InDat$Start)
+hist(InDat$Duration)
+hist(InDat$Peak)
+hist(InDat$Var)
+hist(InDat$Skew)
+hist(InDat$Kurt)
+
+InDat[InDat$Var > 5000 & !is.na(InDat$Kurt),c("Num","Fam","Pop","Var")]# Outlier?
+InDat[InDat$Skew <= -4 & !is.na(InDat$Kurt),c("Num","Fam","Pop","Skew")]# Outlier?
+InDat[InDat$Kurt >= 10 & !is.na(InDat$Kurt),c("Num","Fam","Pop","Kurt")]# Outlier?
+
+```
+
+> Note to Dale: Check the data for this individual
+
+
+# Scale Data
+
+## Key parameters
+
+1. Days to first flower
+2. Duration of flowering 
+2. Flowering schedule variance 
+3. Days to peak flowering
+
+
+Scale traits to mean of zero and unit variance
+
+```{r}
+PDat<-InDat %>%
+  select(Num:Lat,Start,Peak,Duration,Var,Skew,Kurt) %>%
+  mutate(S_Start = (Start-mean(Start,na.rm=T))/sd(Start,na.rm=T)) %>%
+  mutate(S_Peak = (Peak-mean(Peak,na.rm=T))/sd(Peak,na.rm=T)) %>%  
+  mutate(S_Duration = (Duration-mean(Duration,na.rm=T))/sd(Duration,na.rm=T)) %>%  
+  mutate(S_Var = (Var-mean(Var,na.rm=T))/sd(Var,na.rm=T)) %>%
+  mutate(S_Skew = (Skew-mean(Skew,na.rm=T))/sd(Skew,na.rm=T)) %>%
+  mutate(S_Kurt = (Kurt-mean(Kurt,na.rm=T))/sd(Kurt,na.rm=T))  
+```
+
+# Reorganize
+
+Move from 'wide' to 'long' format for mixed models analysis
+
+```{r}
+MDat<-PDat %>%
+  select(Num:Lat, S_Start, S_Peak, S_Duration, S_Var, S_Skew, S_Kurt) %>%
+  gather(key = "Fparm", value = "Value",
+       S_Start, S_Peak, S_Duration, S_Var, S_Skew, S_Kurt)
+MDat$PseudoGroup<-as.factor("Group")
+```
+
+# Statistics
+
+Is there detectable genetic variation for these parameters?
+
+**PROBLEM**: Not enough within-family replication
+(Most families have only 1 or 2 individuals)
+
+See README.md for ideas
+
+## Which phenology traits differ among populations ?
+
+```{r}
+for (trait in unique(MDat$Fparm)){
+  Mod0 <- lmer(Value ~ 1 + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  Mod1 <- lmer(Value ~ 1 + Pop + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  print("--------------")
+  print(trait)
+  print("--------------")
+  print(anova(Mod0,Mod1))
+  print("--------------")
+  
+  Mod0<-Mod1<-NA # Clean-up
+}
+```
+
+
+## Which traits form clines?
+
+```{r}
+for (trait in unique(MDat$Fparm)){
+  Mod0 <- lmer(Value ~ 1 + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  Mod1 <- lmer(Value ~ 1 + Lat + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  print("--------------")
+  print(trait)
+  print("--------------")
+  print(anova(Mod0,Mod1))
+  print("--------------")
+  
+  Mod0<-Mod1<-NA # Clean-up
+}
+```
+
+## Do populations differ after accounting for clines?
+
+```{r}
+for (trait in unique(MDat$Fparm)){
+  Mod0 <- lmer(Value ~ 1 + Lat + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  Mod1 <- lmer(Value ~ 1 + Lat + Pop + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  print("--------------")
+  print(trait)
+  print("--------------")
+  print(anova(Mod0,Mod1))
+  print("--------------")
+  
+    Mod0<-Mod1<-NA # Clean-up
+
+}
+```
+
+> NOTE: only compare for significant clines
+
+
+
+
