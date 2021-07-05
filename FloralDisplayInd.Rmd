@@ -27,7 +27,6 @@ Days<-names(dat)[grep("d[0-9]",names(dat))] # Vector of names
 Flwr<-dat %>% gather(all_of(Days),key="RelDay",value="OpFlwr") # Rearrange
 Flwr$RelDay<-as.numeric(gsub("d","",Flwr$RelDay)) # Remove 'd' from day
 Flwr$AbsDay<-Flwr$RelDay+Flwr$Start # Add absolute day
-
 ```
 
 # Convert to long format
@@ -51,7 +50,7 @@ for (i in 1:length(Ind)) {
     OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))#rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr until end of observed flowering, then rep 0
     OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))
     AbsDay<-c(0:Start,Focal$AbsDay,End:125)
-}
+  }
   Individual<-c(rep(Ind[i],length(AbsDay))) #Individual column
   NewData<-data.frame(AbsDay,OpFlwr,Individual) #New data frame for each individual
   MasterData<-rbind(MasterData,NewData) #New data frame containing information for all individuals
@@ -98,11 +97,10 @@ for( j in 1:length(Ind)){
   df2<-df1 %>% left_join(FocalFrame,by=c("Days"="AbsDay")) #Joining new data frame (with GAM predictions) with raw data frame.
   df3<-rbind(df3,df2)
 }
-
- 
 ```
 
 ```{r find moments of standardized data}
+
 #Find moments.
 DisplayInd<-data.frame()
 
@@ -126,7 +124,33 @@ names(DisplayInd)<-c("Num","Peak","Var","Skew","Kurt")
 
 LythrumDisplayInd <- full_join(LythrumDisplayInd,DisplayInd,by="Num")
 
+### Troubleshooting. ###
+
+LythrumDisplayInd<-LythrumDisplayInd[!is.nan(LythrumDisplayInd$Kurt),]#Remove individuals with NaN values for Kurtosis (and by extension skewness -- same individuals also have values of 0 for variance) from dataset. 
+subset(LythrumDisplayInd,is.nan(Kurt)) #Double check.
+
+#Add in missing duration values.
+LythrumDisplayInd[is.na(LythrumDisplayInd$Duration),] #Check missing values.
+Ind2<-LythrumDisplayInd$Num
+for(j in 1:length(Ind2)){
+  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Num==Ind2[j]) 
+  if (is.na(Focal$Duration)) {
+    Focal2<-subset(Flwr,Flwr$Num==Focal$Num)
+    Start<-min(Focal2$AbsDay, na.rm=T)
+    End<-max(Focal2$AbsDay, na.rm=T)
+    Dur<-End-Start
+    LythrumDisplayInd$Duration[LythrumDisplayInd$Num==Ind2[j]]<-Dur
+    print("Yes")
+  } else {
+    print("No")
+  }
+}  ## Calculate missing duration values from 5-day census data and replace missing values with calculated values.
+LythrumDisplayInd[is.na(LythrumDisplayInd$Duration),] #Check that missing values have now been replaced with calculated duration.
+
+### Export dataset. ###
+
 write.csv(LythrumDisplayInd,"./data/FloralDisplayInd.csv",row.names=F)
+
 ```
 
 ```{r population means}
