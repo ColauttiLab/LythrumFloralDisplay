@@ -99,6 +99,8 @@ for( j in 1:length(Ind)){
 }
 ```
 
+# Find moments of standardized data and troubleshoot missing data
+
 ```{r find moments of standardized data}
 
 #Find moments.
@@ -188,4 +190,23 @@ names(PopMeans)<-c("Pop", "Latitude", "TotFlwr",
 
 write.csv(PopMeans,"./data/FloralDisplayPop.csv",row.names=F)
 
+```
+
+```{r within-population variation}
+## Calculate within-population sums of total flowers/day.
+# Since census days started from day of first flower, observation days are different for each individual. I think a clearer approximation of the total number of open flowers/day can be obtained by summing open flower values including imputed values. 
+df4<-c()
+PopSums<-matrix(ncol=3,nrow=0)
+colnames(PopSums)<-c("PopCode","Days","FlwrSum")
+PopCode<-unique(LythrumDisplayInd$Pop)
+for(j in 1:length(PopCode)){
+  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
+  Focal2<-subset(df3, Individual.x %in% Focal$Num)
+  df4<- Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
+  Pop<-rep(PopCode[j],length(Days)) # Population code column
+  NewData<-data.frame(Pop,Days,Flowers) # New dataset.
+  PopSums<-rbind(PopSums,NewData)
+  }
+
+write.csv(PopSums,"./data/PopulationOpFlwrTotals.csv",row.names=F)
 ```
