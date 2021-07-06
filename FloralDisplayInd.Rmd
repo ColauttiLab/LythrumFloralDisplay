@@ -200,13 +200,38 @@ PopSums<-matrix(ncol=3,nrow=0)
 colnames(PopSums)<-c("PopCode","Days","FlwrSum")
 PopCode<-unique(LythrumDisplayInd$Pop)
 for(j in 1:length(PopCode)){
-  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
+  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[2])
   Focal2<-subset(df3, Individual.x %in% Focal$Num)
-  df4<- Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
+  df4<-Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
   Pop<-rep(PopCode[j],length(Days)) # Population code column
-  NewData<-data.frame(Pop,Days,Flowers) # New dataset.
-  PopSums<-rbind(PopSums,NewData)
-  }
+  NewData<-data.frame(Pop,Days,Flowers) # New dataset from Focal.
+  PopSums<-rbind(PopSums,NewData) # Final dataset.
+}
 
 write.csv(PopSums,"./data/PopulationOpFlwrTotals.csv",row.names=F)
+```
+
+```{r flowering schedule moments based on total flowers/day within populations}
+#Find moments.
+DisplayPop<-data.frame()
+
+##New moments for-loop with new dataset. 
+for(j in 1:length(PopCode)){
+  Focal<-PopSums[PopSums$Pop==PopCode[j],]
+  pDays<-Focal$Flowers/sum(Focal$Flowers,na.rm=TRUE) # Proportion of total open flowers open on each day 
+  WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
+  Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
+  Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
+  
+  CoeffVar<-Var/(Mean)
+  CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
+  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
+
+  DisplayPop<-rbind(DisplayPop,
+                    c(PopCode[j], Mean, Var, CoeffSkew, CoeffKurt)) # The population code is strangely concatenating as a number and not the actual population code.
+  
+} 
+names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
+
+
 ```
