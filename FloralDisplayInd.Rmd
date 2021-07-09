@@ -196,17 +196,21 @@ write.csv(PopMeans,"./data/FloralDisplayPop.csv",row.names=F)
 ## Calculate within-population sums of total flowers/day.
 # Since census days started from day of first flower, observation days are different for each individual. I think a clearer approximation of the total number of open flowers/day can be obtained by summing open flower values including imputed values. 
 df4<-c()
-PopSums<-matrix(ncol=3,nrow=0)
-colnames(PopSums)<-c("PopCode","Days","FlwrSum")
+PopSums<-data.frame()
 PopCode<-unique(LythrumDisplayInd$Pop)
 for(j in 1:length(PopCode)){
   Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
   Focal2<-subset(df3, Individual.x %in% Focal$Num)
   df4<-Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
   Pop<-rep(PopCode[j],length(Days)) # Population code column
-  NewData<-data.frame(Pop,Days,Flowers) # New dataset from Focal.
+  NewData<-data.frame(Pop,Days,df4$Flowers) # New dataset from Focal.
+  
   PopSums<-rbind(PopSums,NewData) # Final dataset.
+ 
+  Focal<-Focal2<-df4<-Pop<-NewData<-NA
 }
+
+colnames(PopSums)<-c("PopCode","Days","FlwrSum")
 
 write.csv(PopSums,"./data/PopulationOpFlwrTotals.csv",row.names=F)
 ```
@@ -214,11 +218,10 @@ write.csv(PopSums,"./data/PopulationOpFlwrTotals.csv",row.names=F)
 ```{r flowering schedule moments based on total flowers/day within populations}
 #Find moments.
 DisplayPop<-data.frame()
-
 ##New moments for-loop with new dataset. 
 for(j in 1:length(PopCode)){
   Focal<-PopSums[PopSums$Pop==PopCode[j],]
-  pDays<-Focal$Flowers/sum(Focal$Flowers,na.rm=TRUE) # Proportion of total open flowers open on each day 
+  pDays<-Focal$FlwrSum/sum(Focal$FlwrSum,na.rm=TRUE) # Proportion of total open flowers open on each day 
   WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
   Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
   Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
@@ -230,8 +233,10 @@ for(j in 1:length(PopCode)){
   DisplayPop<-rbind(DisplayPop,
                     c(PopCode[j], Mean, Var, CoeffSkew, CoeffKurt)) # The population code is strangely concatenating as a number and not the actual population code.
   
+  Focal<-pDays<-WeightDays<-Mean<-Var<-NA
+  CoeffVar<-CoeffSkew<-CoeffKurt<-NA
 } 
-names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
 
+names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
 
 ```
