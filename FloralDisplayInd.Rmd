@@ -200,7 +200,7 @@ PopSums<-matrix(ncol=3,nrow=0)
 colnames(PopSums)<-c("PopCode","Days","FlwrSum")
 PopCode<-unique(LythrumDisplayInd$Pop)
 for(j in 1:length(PopCode)){
-  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[2])
+  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
   Focal2<-subset(df3, Individual.x %in% Focal$Num)
   df4<-Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
   Pop<-rep(PopCode[j],length(Days)) # Population code column
