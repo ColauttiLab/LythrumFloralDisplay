@@ -239,4 +239,17 @@ for(j in 1:length(PopCode)){
 
 names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
 
+DisplayPop<-full_join(PopMeans[,c("Pop","Latitude")],DisplayPop,by="Pop")
+DisplayPop$Latitude<-as.numeric(DisplayPop$Latitude)
+DisplayPop$Peak<-as.numeric(DisplayPop$Peak)
+DisplayPop$Var<-as.numeric(DisplayPop$Var)
+DisplayPop$Skew<-as.numeric(DisplayPop$Skew)
+DisplayPop$Kurt<-as.numeric(DisplayPop$Kurt)
+
+qplot(x=Latitude,y=Peak,data=DisplayPop)
+qplot(x=Latitude,y=Var,data=DisplayPop)
+qplot(x=Latitude,y=Skew,data=DisplayPop)
+qplot(x=Latitude,y=Kurt,data=DisplayPop)
+
+
 ```
