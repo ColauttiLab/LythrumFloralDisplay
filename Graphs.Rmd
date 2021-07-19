@@ -29,28 +29,42 @@ theme_custom<-function(base_size = 24, base_family = ""){
 
 ```{r}
 #Julian day first flower x Latitude
-FirstFlwr<- ggplot(data=dat,mapping=aes(x=Latitude,y=Start)) + geom_point() + labs(x="Latitude",y="Day",title="Day of first flower") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+FirstFlwr<- ggplot(data=dat,mapping=aes(x=Latitude,y=Start)) + geom_point() + labs(x="Latitude",y="Day",title="Day of First Flower") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 FirstFlwr
 
 reg4<-lm(Start~Latitude,data=dat)
 summary(reg4)
 
+pdf("FirstFlwr.pdf",width=10,height=6)
+FirstFlwr
+dev.off()
+
 #Duration x Latitude
-Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=Duration)) + labs(x="Latitude",y="Days",title="Floweirng Duration") + theme_custom()
+Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=Duration)) + labs(x="Latitude",y="Days",title="Flowering Duration") + theme_custom()
 
 Duration
 
 reg5<-lm(Duration~Latitude,data=dat)
 summary(reg5)
 
+pdf("Duration.pdf",width=10,height=6)
+Duration
+dev.off()
+
+
 #End Date x Latitude
-EndDate<-ggplot(data=dat,mapping=aes(x=Latitude,y=End)) + geom_point() + labs(x="Latitude",y="Day",title="Last day of flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+EndDate<-ggplot(data=dat,mapping=aes(x=Latitude,y=End)) + geom_point() + labs(x="Latitude",y="Day",title="Flowering End Date") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 EndDate
 
 reg6<-lm(End~Latitude,data=dat)
 summary(reg6)
+
+pdf("End.pdf",width=10,height=6)
+EndDate
+dev.off()
+
 
 ```
 
@@ -62,28 +76,41 @@ summary(reg6)
 
 ```{r standardized data graphs}
 # Peak (mean) flowering x Latitude
-Peak <- ggplot(data=dat,mapping=aes(x=Latitude,y=Peak)) + geom_point() + labs(x="Latitude",y="Peak",title="Peak flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+Peak <- ggplot(data=dat,mapping=aes(x=Latitude,y=Peak)) + geom_point() + labs(x="Latitude",y="Day",title="Day of Peak Flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 Peak
 
 reg0<-lm(Peak~Latitude,data=dat)
 summary(reg0)
 
+pdf("Peak.pdf",width=10,height=6)
+Peak
+dev.off()
+
+
 # Variance x Latitude
-VarST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Var)) + geom_point() + labs(x="Latitude",y="Variance",title="Variance of flowering schedule") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+VarST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Var)) + geom_point() + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 VarST
 
 reg1<-lm(Var~Latitude,data=dat)
 summary(reg1)
 
+pdf("Variance.pdf",width=10,height=6)
+VarST
+dev.off()
+
 #Skew x Latitude
-SkewST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Skew)) + geom_point() + labs(x="Latitude",y="Skew Coef",title="Skewness of Flowering Schedule") + theme_custom()
+SkewST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Skew)) + geom_point() + labs(x="Latitude",y="Skewness Coef",title="Skewness of Flowering Schedule") + theme_custom()
 
 SkewST
 
 reg2<-lm(Skew~Latitude,data=dat)
 summary(reg2)
+
+pdf("Skewness.pdf",width=10,height=6)
+SkewST
+dev.off()
 
 #Kurtosis x Latitude
 KurtST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Kurt)) + geom_point() + labs(x="Latitude",y="Kurtosis Coef",title="Kurtosis of Flowering Schedule") + theme_custom()
@@ -92,21 +119,33 @@ KurtST
 
 reg3<-lm(Kurt~Latitude,data=dat)
 summary(reg3)
+
+pdf("Kurtosis.pdf",width=10,height=6)
+KurtST
+dev.off()
+
 ```
 
 ```{r high and low variance graphs}
 #Low Variance
 x<-seq(0,125,by=1)
 y<-dnorm(x,mean=62.5,sd=6)
-LowVar<-qplot(x,y,geom="line") + ylim(0,0.07) + theme_custom()
+LowVar<-qplot(x,y,geom="line") + ylim(0,0.07) + theme_custom() + ylab("Open Flowers") + xlab("Day") + ggtitle("Low Variance")
 
 #High Variance
 x<-seq(0,125,by=1)
 y2<-dnorm(x,mean=62.5,sd=18)
-HighVar<-qplot(x,y2,geom="line") + ylim(0,0.07) + theme_custom()
+HighVar<-qplot(x,y2,geom="line") + ylim(0,0.07) + theme_custom() + ylab("Open Flowers") + xlab("Day")+ ggtitle("High Variance")
 
 HighVar
 LowVar
 
+pdf("LowVariance.pdf",width=10,height=6)
+LowVar
+dev.off()
+
+pdf("HighVariance.pdf",width=10,height=6)
+HighVar
+dev.off()
 
 ```
