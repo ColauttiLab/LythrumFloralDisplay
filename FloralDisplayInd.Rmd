@@ -225,19 +225,20 @@ for(j in 1:length(PopCode)){
   WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
   Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
   Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
-  
   CoeffVar<-Var/(Mean)
   CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
   CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
-
+  Start<-min(Focal$Days[Focal$FlwrSum!=0])
+  End<-max(Focal$Days[Focal$FlwrSum!=0])
+  Duration<-End-Start
   DisplayPop<-rbind(DisplayPop,
-                    c(PopCode[j], Mean, Var, CoeffSkew, CoeffKurt)) # The population code is strangely concatenating as a number and not the actual population code.
+                    c(PopCode[j], Mean, Var, CoeffSkew, CoeffKurt, Start, Duration)) # The population code is strangely concatenating as a number and not the actual population code.
   
   Focal<-pDays<-WeightDays<-Mean<-Var<-NA
   CoeffVar<-CoeffSkew<-CoeffKurt<-NA
 } 
 
-names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
+names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt","Start","Duration")
 
 DisplayPop<-full_join(PopMeans[,c("Pop","Latitude")],DisplayPop,by="Pop")
 DisplayPop$Latitude<-as.numeric(DisplayPop$Latitude)
@@ -246,10 +247,53 @@ DisplayPop$Var<-as.numeric(DisplayPop$Var)
 DisplayPop$Skew<-as.numeric(DisplayPop$Skew)
 DisplayPop$Kurt<-as.numeric(DisplayPop$Kurt)
 
-qplot(x=Latitude,y=Peak,data=DisplayPop)
-qplot(x=Latitude,y=Var,data=DisplayPop)
-qplot(x=Latitude,y=Skew,data=DisplayPop)
-qplot(x=Latitude,y=Kurt,data=DisplayPop)
+theme_custom<-function(base_size = 24, base_family = ""){
+  theme_bw(base_size = base_size, base_family = base_family) %+replace% 
+    theme(axis.text = element_text(size = rel(0.8),colour="black"),
+          axis.ticks = element_line(colour = "black"), 
+          legend.position = "none",
+          panel.border = element_rect(fill = NA, colour = NA), 
+          panel.grid.major = element_line(colour = NA,size = 0), 
+          panel.grid.minor = element_line(colour = NA,size = 0), 
+          axis.line = element_line(colour ="black")
+    )
+}
+
+Peak<- ggplot(data=DisplayPop,mapping=aes(x=Latitude,y=Peak)) + geom_point(size=3) + labs(x="Latitude",y="Day",title="Population Peak Flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+reg<-lm(Peak~Latitude,data=DisplayPop)
+summary(reg)
+
+pdf("PopPeak.pdf",width=10,height=6)
+Peak
+dev.off()
+
+Variance<- ggplot(data=DisplayPop,mapping=aes(x=Latitude,y=Var)) + geom_point(size=3) + labs(x="Latitude",y="Variance",title="Population Flowering Schedule Variance") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+reg1<-lm(Var~Latitude,data=DisplayPop)
+summary(reg1)
+
+pdf("PopVar.pdf",width=10,height=6)
+Variance
+dev.off()
+
+Skew<- ggplot(data=DisplayPop,mapping=aes(x=Latitude,y=Skew)) + geom_point(size=3) + labs(x="Latitude",y="Skewness Coeff",title="Population Flowering Schedule Skewness") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+reg2<-lm(Skew~Latitude,data=DisplayPop)
+summary(reg2)
+
+pdf("PopSkew.pdf",width=10,height=6)
+Skew
+dev.off()
+
+Kurt<- ggplot(data=DisplayPop,mapping=aes(x=Latitude,y=Kurt)) + geom_point(size=3) + labs(x="Latitude",y="Kurtosis Coeff",title="Population Flowering Schedule Kurtosis") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+reg3<-lm(Kurt~Latitude,data=DisplayPop)
+summary(reg3)
+
+pdf("PopKurt.pdf",width=10,height=6)
+Kurt
+dev.off()
+
+Duration<- ggplot(data=DisplayPop,mapping=aes(x=Latitude,y=Duration)) + geom_point(size=3) + labs(x="Latitude",y="Duration",title="Population Flowering Schedule Duration") + theme_custom() 
+reg3<-lm(Duration~Latitude,data=DisplayPop)
+summary(reg3)
 
 
 ```
