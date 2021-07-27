@@ -29,7 +29,7 @@ theme_custom<-function(base_size = 24, base_family = ""){
 
 ```{r}
 #Julian day first flower x Latitude
-FirstFlwr<- ggplot(data=dat,mapping=aes(x=Latitude,y=Start)) + geom_point() + labs(x="Latitude",y="Day",title="Day of First Flower") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+FirstFlwr<- ggplot(data=dat,mapping=aes(x=Latitude,y=Start)) + geom_point(size=3) + labs(x="Latitude",y="Day",title="Day of First Flower") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 FirstFlwr
 
@@ -41,7 +41,7 @@ FirstFlwr
 dev.off()
 
 #Duration x Latitude
-Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=Duration)) + labs(x="Latitude",y="Days",title="Flowering Duration") + theme_custom()
+Duration<- ggplot() + geom_point(data=dat,mapping=aes(x=Latitude,y=Duration),size=3) + labs(x="Latitude",y="Days",title="Flowering Duration") + theme_custom()
 
 Duration
 
@@ -54,7 +54,7 @@ dev.off()
 
 
 #End Date x Latitude
-EndDate<-ggplot(data=dat,mapping=aes(x=Latitude,y=End)) + geom_point() + labs(x="Latitude",y="Day",title="Flowering End Date") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+EndDate<-ggplot(data=dat,mapping=aes(x=Latitude,y=End)) + geom_point(size=3) + labs(x="Latitude",y="Day",title="Flowering End Date") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 EndDate
 
@@ -76,7 +76,7 @@ dev.off()
 
 ```{r standardized data graphs}
 # Peak (mean) flowering x Latitude
-Peak <- ggplot(data=dat,mapping=aes(x=Latitude,y=Peak)) + geom_point() + labs(x="Latitude",y="Day",title="Day of Peak Flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+Peak <- ggplot(data=dat,mapping=aes(x=Latitude,y=Peak)) + geom_point(size=3) + labs(x="Latitude",y="Day",title="Day of Peak Flowering") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 Peak
 
@@ -89,7 +89,7 @@ dev.off()
 
 
 # Variance x Latitude
-VarST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Var)) + geom_point() + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
+VarST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Var)) + geom_point(size=3) + labs(x="Latitude",y="Variance",title="Variance of Flowering Schedule") + theme_custom() + geom_smooth(method = "lm", se=F, colour="red")
 
 VarST
 
@@ -101,7 +101,7 @@ VarST
 dev.off()
 
 #Skew x Latitude
-SkewST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Skew)) + geom_point() + labs(x="Latitude",y="Skewness Coef",title="Skewness of Flowering Schedule") + theme_custom()
+SkewST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Skew)) + geom_point(size=3) + labs(x="Latitude",y="Skewness Coef",title="Skewness of Flowering Schedule") + theme_custom()
 
 SkewST
 
@@ -113,7 +113,7 @@ SkewST
 dev.off()
 
 #Kurtosis x Latitude
-KurtST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Kurt)) + geom_point() + labs(x="Latitude",y="Kurtosis Coef",title="Kurtosis of Flowering Schedule") + theme_custom()
+KurtST<- ggplot(data=dat,mapping=aes(x=Latitude,y=Kurt)) + geom_point(size=3) + labs(x="Latitude",y="Kurtosis Coef",title="Kurtosis of Flowering Schedule") + theme_custom()
 
 KurtST
 
