@@ -84,12 +84,15 @@ See README.md for ideas
 ## Which phenology traits differ among populations ?
 
 ```{r}
+  Mod0 <- lmer(Peak ~ 1 + (1|Fam), data = InDat)
+  Mod1 <- lmer(Peak ~ 1 + Pop + (1|Fam), data = InDat)
+
+
 for (trait in unique(MDat$Fparm)){
-  Mod0 <- lmer(Value ~ 1 + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
-  Mod1 <- lmer(Value ~ 1 + Pop + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  Mod0 <- lmer(Value ~ 1 + (1|Fam), data = MDat[ MDat$Fparm == trait , ])
+  Mod1 <- lmer(Value ~ 1 + Pop + (1|Fam), data = MDat[ MDat$Fparm == trait , ])
   print("--------------")
   print(trait)
-  print("--------------")
   print(anova(Mod0,Mod1))
   print("--------------")
   
@@ -106,7 +109,6 @@ for (trait in unique(MDat$Fparm)){
   Mod1 <- lmer(Value ~ 1 + Lat + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
   print("--------------")
   print(trait)
-  print("--------------")
   print(anova(Mod0,Mod1))
   print("--------------")
   
@@ -119,10 +121,9 @@ for (trait in unique(MDat$Fparm)){
 ```{r}
 for (trait in unique(MDat$Fparm)){
   Mod0 <- lmer(Value ~ 1 + Lat + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
-  Mod1 <- lmer(Value ~ 1 + Lat + Pop + (1|Pop), data = MDat[ MDat$Fparm == trait , ])
+  Mod1 <- lmer(Value ~ 1 + Lat + Pop + (1|Pop/Fam), data = MDat[ MDat$Fparm == trait , ])
   print("--------------")
   print(trait)
-  print("--------------")
   print(anova(Mod0,Mod1))
   print("--------------")
   
