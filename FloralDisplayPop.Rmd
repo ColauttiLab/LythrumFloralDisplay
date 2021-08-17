@@ -1,0 +1,160 @@
+---
+title: "Floral Display Pop"
+author: "Dale Moskoff"
+date: "16/08/2021"
+output: html_document
+---
+
+```{r data setup}
+library(dplyr)
+library(tidyr)
+library(mgcv)
+library(ggplot2)
+library(moments)
+library(readr)
+library(zoo)
+
+dat<-read.csv("./data/LythrumDisplay2008.csv")
+dat<-dat[dat$Num!=187,]
+dat<-dat[dat$Num!=440,]
+LythrumDisplayInd<-dplyr :: select (dat,-Row,-End,-(d0:d60)) # Basic dataframe WITHOUT moments (will be final data frame in the end)
+
+
+## Manipulate original dataset to include absolute day of flowering
+Days<-names(dat)[grep("d[0-9]",names(dat))] # Vector of names
+Flwr<-dat %>% gather(all_of(Days),key="RelDay",value="OpFlwr") # Rearrange
+Flwr$RelDay<-as.numeric(gsub("d","",Flwr$RelDay)) # Remove 'd' from day
+Flwr$AbsDay<-Flwr$RelDay+Flwr$Start # Add absolute day
+```
+
+# Convert to long format
+
+```{r long format}
+
+Ind<-unique(Flwr$Num) 
+
+##Extend AbsDay to be 0:125 with OpFlwr values being NA on added rows of AbsDay.
+MasterData<-matrix(nrow=0,ncol=3)
+colnames(MasterData)<-c("AbsDay","OpFlwr","Individual")
+for (i in 1:length(Ind)) {
+  Focal<-subset(Flwr,Flwr$Num==Ind[i])
+  Start<-min(Focal$AbsDay)-1 #Day that flowering was observed to start.
+  End<-max(Focal$AbsDay)+1 #Day that flowering was observed to end.
+    
+  if (End == 126|End == 125) { #Trouble shooting for when flowering end date was 125 or 126.
+    OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr) #rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr
+    AbsDay<-c(0:Start,Focal$AbsDay)
+  } else {
+    OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))#rep 0 for OpFlwr until start of flowering, then use observed values of OpFlwr until end of observed flowering, then rep 0
+    OpFlwr<-c(rep(NA,length(0:Start)),Focal$OpFlwr,rep(NA,length(End:125)))
+    AbsDay<-c(0:Start,Focal$AbsDay,End:125)
+  }
+  Individual<-c(rep(Ind[i],length(AbsDay))) #Individual column
+  NewData<-data.frame(AbsDay,OpFlwr,Individual) #New data frame for each individual
+  MasterData<-rbind(MasterData,NewData) #New data frame containing information for all individuals
+  #print(Ind[i])
+}
+```
+
+# Impute between census dates
+
+```{r}
+PredictDay<-function(Num,df){
+  AbsDay<-c(0:125)
+  PredDay<-rep(NA,length(AbsDay))
+  PredDay[df$AbsDay[df$Individual==Num]+1]<-df$OpFlwr[df$Individual==Num] # Add observed flower counts to predday
+# is.na(PredDay) # We have to remove NAs at the beginning and end of the observed OpFlwr values to get proper LI inputs. 
+  if(is.na(PredDay[1])){
+    PredDay[1]<-0
+  }
+  
+  if(is.na(PredDay[length(PredDay)])){
+    PredDay[length(PredDay)]<-0
+  }
+  
+  PredDay<-na.approx(PredDay,na.rm=F)
+  PredDay[is.na(PredDay)]<-0
+
+  return(PredDay)
+}
+
+## Put new extended and imputed data points into long-form data frame.
+df3<-matrix(ncol=5,nrow=0)
+colnames(df3)<-c("Flowers","Individual.x","Days","OpFlwr","Individual.y")
+Ind<-unique(MasterData$Individual)
+Days<-c()
+Individual<-c()
+Flowers<-c()
+for( j in 1:length(Ind)){
+  FocalFrame<-MasterData[MasterData$Individual==Ind[j],]
+  Flowers<-PredictDay(Num=Ind[j],df=MasterData)#Here use j to subset each individual in the individual ID vector. 
+  Individual<-rep(Ind[j], times=length(0:125)) #Here to identify the individual, we also need to subset the Ind vector instead. 
+  Days<-0:125
+  df1<-data.frame(Flowers,Individual,Days)
+  df2<-df1 %>% left_join(FocalFrame,by=c("Days"="AbsDay")) #Joining new data frame (with GAM predictions) with raw data frame.
+  df3<-rbind(df3,df2)
+}
+```
+
+
+```{r within-population sums of total flowers/day}
+
+# Since census days started from day of first flower, observation days are different for each individual. A better approximation of the total number of open flowers/day can be obtained by summing open flower values including imputed values:
+
+df4<-c()
+PopSums<-data.frame()
+PopCode<-unique(LythrumDisplayInd$Pop)
+for(j in 1:length(PopCode)){
+  Focal<-subset(LythrumDisplayInd,LythrumDisplayInd$Pop==PopCode[j])
+  Focal2<-subset(df3, Individual.x %in% Focal$Num)
+  df4<-Focal2 %>% group_by(Days) %>% summarize(Flowers=sum(Flowers))
+  Pop<-rep(PopCode[j],length(Days)) # Population code column
+  NewData<-data.frame(Pop,Days,df4$Flowers) # New dataset from Focal.
+  
+  PopSums<-rbind(PopSums,NewData) # Final dataset.
+ 
+  Focal<-Focal2<-df4<-Pop<-NewData<-NA
+}
+
+colnames(PopSums)<-c("PopCode","Days","FlwrSum")
+
+write.csv(PopSums,"./data/PopulationOpFlwrTotals.csv",row.names=F)
+```
+
+```{r flowering schedule moments based on total flowers/day within populations}
+#Find moments.
+DisplayPop<-data.frame()
+##New moments for-loop with new dataset. 
+for(j in 1:length(PopCode)){
+  Focal<-PopSums[PopSums$Pop==PopCode[j],]
+  pDays<-Focal$FlwrSum/sum(Focal$FlwrSum,na.rm=TRUE) # Proportion of total open flowers open on each day 
+  WeightDays<-Focal$Days*pDays # Weight days by their relative contributions to the mating pool.
+  Mean<-sum(WeightDays,na.rm=TRUE) # Mean value.
+  Var<-sum((WeightDays-Mean)^2*pDays,na.rm=TRUE) # Instead of dividing by the sample size, we multiply by the fractional weighting of pDays
+  
+  CoeffVar<-Var/(Mean)
+  CoeffSkew<-sum((WeightDays-Mean)^3*pDays,na.rm=TRUE)/sqrt(Var)^3
+  CoeffKurt<-sum((WeightDays-Mean)^4*pDays,na.rm=TRUE)/sqrt(Var)^4
+
+  DisplayPop<-rbind(DisplayPop,
+                    c(PopCode[j], Mean, Var, CoeffSkew, CoeffKurt)) # The population code is strangely concatenating as a number and not the actual population code.
+  
+  Focal<-pDays<-WeightDays<-Mean<-Var<-NA
+  CoeffVar<-CoeffSkew<-CoeffKurt<-NA
+} 
+
+names(DisplayPop)<-c("Pop","Peak","Var","Skew","Kurt")
+
+DisplayPop<-full_join(PopMeans[,c("Pop","Latitude")],DisplayPop,by="Pop")
+
+DisplayPop$Latitude<-as.numeric(DisplayPop$Latitude)
+DisplayPop$Peak<-as.numeric(DisplayPop$Peak)
+DisplayPop$Var<-as.numeric(DisplayPop$Var)
+DisplayPop$Skew<-as.numeric(DisplayPop$Skew)
+DisplayPop$Kurt<-as.numeric(DisplayPop$Kurt)
+
+write.csv(DisplayPop,"./data/PopSumMoments.csv",row.names=F)
+
+```
+
+
