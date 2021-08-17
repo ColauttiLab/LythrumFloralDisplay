@@ -36,7 +36,7 @@ FirstFlwr
 reg4<-lm(Start~Latitude,data=dat)
 summary(reg4)
 
-pdf("FirstFlwr.pdf",width=10,height=6)
+pdf("./Output/FirstFlwr.pdf",width=10,height=6)
 FirstFlwr
 dev.off()
 
@@ -48,7 +48,7 @@ Duration
 reg5<-lm(Duration~Latitude,data=dat)
 summary(reg5)
 
-pdf("Duration.pdf",width=10,height=6)
+pdf("./Output/Duration.pdf",width=10,height=6)
 Duration
 dev.off()
 
@@ -61,7 +61,7 @@ EndDate
 reg6<-lm(End~Latitude,data=dat)
 summary(reg6)
 
-pdf("End.pdf",width=10,height=6)
+pdf("./Output/End.pdf",width=10,height=6)
 EndDate
 dev.off()
 
@@ -83,7 +83,7 @@ Peak
 reg0<-lm(Peak~Latitude,data=dat)
 summary(reg0)
 
-pdf("Peak.pdf",width=10,height=6)
+pdf("./Output/Peak.pdf",width=10,height=6)
 Peak
 dev.off()
 
@@ -96,7 +96,7 @@ VarST
 reg1<-lm(Var~Latitude,data=dat)
 summary(reg1)
 
-pdf("Variance.pdf",width=10,height=6)
+pdf("./Output/Variance.pdf",width=10,height=6)
 VarST
 dev.off()
 
@@ -108,7 +108,7 @@ SkewST
 reg2<-lm(Skew~Latitude,data=dat)
 summary(reg2)
 
-pdf("Skewness.pdf",width=10,height=6)
+pdf("./Output/Skewness.pdf",width=10,height=6)
 SkewST
 dev.off()
 
@@ -120,7 +120,7 @@ KurtST
 reg3<-lm(Kurt~Latitude,data=dat)
 summary(reg3)
 
-pdf("Kurtosis.pdf",width=10,height=6)
+pdf("./Output/Kurtosis.pdf",width=10,height=6)
 KurtST
 dev.off()
 
@@ -140,11 +140,11 @@ HighVar<-qplot(x,y2,geom="line") + ylim(0,0.07) + theme_custom() + ylab("Open Fl
 HighVar
 LowVar
 
-pdf("LowVariance.pdf",width=10,height=6)
+pdf("./Output/LowVariance.pdf",width=10,height=6)
 LowVar
 dev.off()
 
-pdf("HighVariance.pdf",width=10,height=6)
+pdf("./Output/HighVariance.pdf",width=10,height=6)
 HighVar
 dev.off()
 
